@@ -159,6 +159,20 @@ jobs:
             echo "已提交并推送更新"
           fi
       
+      - name: 部署到 Cloudflare Pages
+        if: steps.check_version.outputs.need_update == 'true' || github.event_name == 'workflow_dispatch'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -n "$CLOUDFLARE_API_TOKEN" ] && [ -n "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "正在自动部署到 Cloudflare Pages (cfnew)..."
+            npx wrangler pages deploy . --project-name=cfnew --branch=main
+            echo "Cloudflare Pages 部署完成"
+          else
+            echo "未配置 Cloudflare 凭证，跳过自动 Pages 部署"
+          fi
+
       - name: 输出摘要
         run: |
           echo "## 同步结果" >> $GITHUB_STEP_SUMMARY
@@ -166,9 +180,10 @@ jobs:
           echo "- 当前版本: ${{ steps.check_version.outputs.current_version }}" >> $GITHUB_STEP_SUMMARY
           
           if [ "${{ steps.check_version.outputs.need_update }}" = "true" ]; then
-            echo "- 状态: ✅ 已更新到新版本" >> $GITHUB_STEP_SUMMARY
+            echo "- 状态: ✅ 已更新到新版本并部署" >> $GITHUB_STEP_SUMMARY
             echo "- 下载文件: ${{ steps.get_latest.outputs.file_name }}" >> $GITHUB_STEP_SUMMARY
           else
             echo "- 状态: ⏭️ 版本相同，无需更新" >> $GITHUB_STEP_SUMMARY
           fi
+
 
